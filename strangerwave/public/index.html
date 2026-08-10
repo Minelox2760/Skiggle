@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>StrangerWave</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+/* ── Reset & Base ─────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#060608;
+  --s1:#0d0d12;
+  --s2:#12121a;
+  --s3:#1a1a24;
+  --border:#1e1e2e;
+  --border2:#2a2a3d;
+  --accent:#7c6fff;
+  --accent-dim:rgba(124,111,255,0.12);
+  --accent-glow:rgba(124,111,255,0.25);
+  --teal:#2dd4bf;
+  --teal-dim:rgba(45,212,191,0.1);
+  --red:#f43f5e;
+  --red-dim:rgba(244,63,94,0.1);
+  --text:#d4d4e8;
+  --text2:#6b6b8a;
+  --text3:#2e2e42;
+  --r:12px;
+  --r-sm:8px;
+  --r-full:9999px;
+  --mono:'SF Mono','Fira Code','Consolas',monospace;
+}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
+
+/* ── Scrollbar ───────────────────────────────── */
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* ══════════════════════════════════════════════
+   LANDING
+══════════════════════════════════════════════ */
+#landing{
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:48px 20px;
+  position:relative;
+  overflow:hidden;
+}
+
+/* Subtle noise texture */
+#landing::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;opacity:0.4;
+}
+
+.glow-orb{
+  position:fixed;border-radius:50%;pointer-events:none;filter:blur(100px);
+}
+.orb-a{width:500px;height:500px;background:rgba(124,111,255,0.06);top:-150px;right:-100px;}
+.orb-b{width:350px;height:350px;background:rgba(45,212,191,0.04);bottom:-100px;left:-50px;}
+
+/* wordmark */
+.wordmark{
+  font-family:var(--mono);
+  font-size:11px;letter-spacing:6px;
+  color:var(--text2);text-transform:uppercase;
+  margin-bottom:56px;
+  display:flex;align-items:center;gap:10px;
+}
+.wordmark-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--teal);
+  box-shadow:0 0 8px var(--teal);
+  animation:breathe 2s ease-in-out infinite;
+}
+@keyframes breathe{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(0.7);}}
+
+/* hero */
+.hero{
+  font-size:clamp(52px,9vw,108px);
+  font-weight:700;line-height:0.92;
+  letter-spacing:-3px;
+  text-align:center;
+  margin-bottom:20px;
+}
+.hero-1{display:block;color:var(--text);}
+.hero-2{
+  display:block;
+  color:transparent;
+  -webkit-text-stroke:1px rgba(124,111,255,0.5);
+}
+
+.tagline{
+  font-size:15px;color:var(--text2);
+  text-align:center;max-width:360px;
+  line-height:1.7;margin-bottom:52px;
+  font-weight:400;
+}
+
+/* pill */
+.pill{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--teal-dim);
+  border:1px solid rgba(45,212,191,0.15);
+  border-radius:var(--r-full);
+  padding:7px 16px;
+  font-family:var(--mono);font-size:12px;
+  color:var(--teal);margin-bottom:52px;
+}
+.pill-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--teal);
+  animation:breathe 1.5s ease-in-out infinite;
+}
+
+/* mode selector */
+.modes{display:flex;gap:12px;margin-bottom:36px;flex-wrap:wrap;justify-content:center;}
+
+.mode{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:24px 32px;
+  cursor:pointer;
+  transition:border-color .2s,background .2s,transform .2s;
+  text-align:center;min-width:160px;
+  position:relative;overflow:hidden;
+}
+.mode::after{
+  content:'';position:absolute;inset:0;
+  opacity:0;transition:opacity .3s;border-radius:var(--r);
+}
+.mode.t::after{background:radial-gradient(circle at 50% 0,rgba(124,111,255,0.08),transparent 70%);}
+.mode.v::after{background:radial-gradient(circle at 50% 0,rgba(244,63,94,0.06),transparent 70%);}
+.mode:hover{transform:translateY(-3px);}
+.mode.t:hover{border-color:rgba(124,111,255,0.4);}
+.mode.v:hover{border-color:rgba(244,63,94,0.3);}
+.mode:hover::after{opacity:1;}
+
+.mode-ico{font-size:32px;display:block;margin-bottom:10px;line-height:1;}
+.mode-name{font-size:15px;font-weight:600;display:block;margin-bottom:3px;}
+.mode-hint{font-size:12px;color:var(--text2);}
+
+/* interests */
+.int-label{
+  font-family:var(--mono);font-size:10px;
+  letter-spacing:3px;color:var(--text3);
+  text-transform:uppercase;margin-bottom:12px;
+}
+.chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:560px;margin-bottom:8px;}
+.chip{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:var(--r-full);padding:6px 14px;
+  font-size:12px;color:var(--text2);cursor:pointer;
+  transition:all .15s;user-select:none;
+}
+.chip:hover,.chip.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+
+.terms{
+  font-size:11px;color:var(--text3);
+  text-align:center;margin-top:36px;line-height:2;
+}
+.terms a{color:var(--text2);text-decoration:none;}
+.terms a:hover{color:var(--text);}
+
+/* ══════════════════════════════════════════════
+   CHAT ROOM
+══════════════════════════════════════════════ */
+#room{
+  display:none;height:100vh;
+  flex-direction:column;background:var(--bg);
+}
+
+/* topbar */
+.bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;
+  background:var(--s1);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;height:52px;
+}
+.bar-logo{font-family:var(--mono);font-size:13px;color:var(--text2);letter-spacing:2px;}
+.bar-mid{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;color:var(--text2);
+}
+.sdot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--border2);transition:background .3s;
+  flex-shrink:0;
+}
+.sdot.on{background:var(--teal);box-shadow:0 0 6px var(--teal);}
+.sdot.search{background:var(--accent);animation:breathe 1s infinite;}
+.bar-btns{display:flex;gap:8px;}
+
+/* main */
+.main{flex:1;display:flex;overflow:hidden;position:relative;}
+
+/* ── VIDEO PANEL ──────────────────────────── */
+.vpanel{
+  display:none;
+  flex-direction:column;
+  width:320px;flex-shrink:0;
+  background:#040407;
+  border-right:1px solid var(--border);
+  position:relative;
+}
+.vpanel.show{display:flex;}
+
+.vremote{
+  flex:1;position:relative;
+  background:#020204;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+#remoteVideo{width:100%;height:100%;object-fit:cover;display:none;}
+
+.vplaceholder{
+  display:flex;flex-direction:column;
+  align-items:center;gap:14px;
+  color:var(--text3);
+}
+.vplaceholder-icon{
+  width:72px;height:72px;border-radius:50%;
+  background:var(--s2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;
+}
+
+.vlocal{
+  position:absolute;bottom:10px;right:10px;
+  width:90px;height:68px;
+  background:var(--s2);border-radius:var(--r-sm);
+  border:1px solid var(--border);
+  overflow:hidden;z-index:5;
+}
+#localVideo{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+
+.vbar{
+  display:flex;gap:8px;padding:10px 12px;
+  justify-content:center;
+  background:var(--s1);border-top:1px solid var(--border);
+  flex-shrink:0;
+}
+
+/* ── TEXT PANEL ───────────────────────────── */
+.tpanel{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+
+/* searching */
+.overlay{
+  display:none;position:absolute;inset:0;
+  background:rgba(6,6,8,0.96);
+  z-index:30;align-items:center;justify-content:center;
+  flex-direction:column;gap:16px;
+  backdrop-filter:blur(4px);
+}
+.overlay.show{display:flex;}
+.spinner{
+  width:40px;height:40px;
+  border:2px solid var(--border2);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.ov-title{font-size:16px;color:var(--text);font-weight:500;}
+.ov-sub{font-family:var(--mono);font-size:11px;color:var(--text2);}
+.ov-cancel{margin-top:8px;}
+
+/* messages */
+.msgs{
+  flex:1;overflow-y:auto;
+  padding:20px 16px;
+  display:flex;flex-direction:column;gap:10px;
+}
+
+.sysmsg{
+  text-align:center;font-family:var(--mono);
+  font-size:10px;letter-spacing:1px;color:var(--text3);
+  display:flex;align-items:center;gap:10px;
+  text-transform:uppercase;padding:4px 0;
+}
+.sysmsg::before,.sysmsg::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.msg{
+  display:flex;flex-direction:column;
+  max-width:72%;gap:3px;
+  animation:msgIn .15s ease-out;
+}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.msg.me{align-self:flex-end;align-items:flex-end;}
+.msg.them{align-self:flex-start;align-items:flex-start;}
+
+.msg-who{font-size:10px;font-family:var(--mono);color:var(--text3);padding:0 6px;letter-spacing:1px;text-transform:uppercase;}
+
+.bubble{
+  padding:9px 14px;
+  border-radius:14px;
+  font-size:14px;line-height:1.55;
+  word-break:break-word;
+  white-space:pre-wrap;
+}
+.msg.me .bubble{
+  background:var(--accent);color:#fff;
+  border-bottom-right-radius:3px;
+}
+.msg.them .bubble{
+  background:var(--s3);color:var(--text);
+  border:1px solid var(--border);
+  border-bottom-left-radius:3px;
+}
+
+/* typing */
+.typing-wrap{padding:0 16px 6px;}
+.typing{
+  display:none;
+  background:var(--s3);border:1px solid var(--border);
+  border-radius:14px;border-bottom-left-radius:3px;
+  padding:10px 14px;width:fit-content;
+  gap:4px;align-items:center;
+}
+.typing.show{display:flex;}
+.td{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--text2);
+  animation:bounce 1.2s ease-in-out infinite;
+}
+.td:nth-child(2){animation-delay:.2s;}
+.td:nth-child(3){animation-delay:.4s;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.3;}30%{transform:translateY(-5px);opacity:1;}}
+
+/* input */
+.inputbar{
+  padding:12px 14px;
+  background:var(--s1);border-top:1px solid var(--border);
+  display:flex;gap:10px;align-items:flex-end;
+  flex-shrink:0;
+  position:relative;
+}
+
+textarea.inp{
+  flex:1;background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:10px 14px;
+  color:var(--text);
+  font-family:inherit;font-size:14px;
+  resize:none;outline:none;
+  max-height:110px;line-height:1.5;
+  transition:border-color .15s;
+}
+textarea.inp::placeholder{color:var(--text3);}
+textarea.inp:focus{border-color:rgba(124,111,255,0.4);}
+textarea.inp:disabled{opacity:.4;cursor:not-allowed;}
+
+/* emoji tray */
+.etray{
+  display:none;position:absolute;
+  bottom:68px;left:14px;
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:var(--r);padding:10px;
+  gap:6px;flex-wrap:wrap;
+  max-width:260px;z-index:20;
+  box-shadow:0 8px 24px rgba(0,0,0,0.5);
+}
+.etray.show{display:flex;}
+.emo{
+  font-size:20px;cursor:pointer;
+  padding:4px;border-radius:6px;
+  transition:transform .1s;
+  background:none;border:none;line-height:1;
+}
+.emo:hover{transform:scale(1.3);background:var(--s2);}
+
+/* disc banner */
+.dbanner{
+  display:none;
+  background:var(--red-dim);
+  border-bottom:1px solid rgba(244,63,94,0.15);
+  padding:9px 16px;
+  font-size:12px;color:var(--red);
+  align-items:center;justify-content:center;
+  gap:12px;flex-shrink:0;
+  font-family:var(--mono);letter-spacing:.5px;
+}
+.dbanner.show{display:flex;}
+
+/* ── BUTTONS ──────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:7px;border:none;border-radius:var(--r-full);
+  cursor:pointer;font-family:inherit;font-weight:600;
+  transition:all .15s;white-space:nowrap;line-height:1;
+}
+.btn:active{transform:scale(.96);}
+
+.btn-p{background:var(--accent);color:#fff;padding:10px 20px;font-size:13px;}
+.btn-p:hover{background:#8f84ff;}
+
+.btn-ghost{
+  background:transparent;color:var(--text2);
+  border:1px solid var(--border);
+  padding:10px 18px;font-size:13px;
+}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text);}
+
+.btn-danger{
+  background:var(--red-dim);color:var(--red);
+  border:1px solid rgba(244,63,94,0.2);
+  padding:8px 16px;font-size:12px;
+}
+.btn-danger:hover{background:rgba(244,63,94,0.15);}
+
+.btn-icon{
+  width:40px;height:40px;border-radius:50%;
+  background:var(--s2);border:1px solid var(--border);
+  color:var(--text2);font-size:16px;flex-shrink:0;
+}
+.btn-icon:hover{border-color:var(--border2);color:var(--text);}
+.btn-icon.muted{background:var(--red-dim);border-color:rgba(244,63,94,0.3);color:var(--red);}
+
+.btn-send{
+  width:40px;height:40px;border-radius:50%;
+  background:var(--accent);border:none;
+  color:#fff;font-size:16px;flex-shrink:0;
+  cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;
+}
+.btn-send:hover{background:#8f84ff;}
+.btn-send:disabled{opacity:.3;cursor:not-allowed;transform:none;}
+
+/* ── TOAST ────────────────────────────────── */
+.toast{
+  position:fixed;bottom:20px;left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:var(--r-full);
+  padding:10px 18px;font-size:13px;color:var(--text);
+  z-index:999;transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;white-space:nowrap;
+  box-shadow:0 4px 24px rgba(0,0,0,.5);
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ── RESPONSIVE ───────────────────────────── */
+@media(max-width:640px){
+  .vpanel.show{
+    width:100%;position:absolute;
+    top:0;left:0;height:44%;z-index:10;
+    border-right:none;border-bottom:1px solid var(--border);
+  }
+  .tpanel{margin-top:0;}
+  .hero{font-size:52px;}
+}
+
+/* Fade-in animation for landing */
+.fade{animation:fadeUp .5s ease-out both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.d1{animation-delay:.05s;} .d2{animation-delay:.1s;} .d3{animation-delay:.15s;}
+.d4{animation-delay:.2s;} .d5{animation-delay:.25s;} .d6{animation-delay:.3s;}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════ LANDING ══════════════════════ -->
+<div id="landing">
+  <div class="glow-orb orb-a"></div>
+  <div class="glow-orb orb-b"></div>
+
+  <div class="wordmark fade"><span class="wordmark-dot"></span>StrangerWave</div>
+
+  <div class="pill fade d1">
+    <span class="pill-dot"></span>
+    <span id="onlineCount">...</span>&nbsp;online now
+  </div>
+
+  <h1 class="hero fade d2">
+    <span class="hero-1">Meet</span>
+    <span class="hero-2">Strangers.</span>
+  </h1>
+
+  <p class="tagline fade d3">Anonymous. Instant. Real people, real conversations.</p>
+
+  <div class="modes fade d4">
+    <div class="mode t" onclick="startChat('text')">
+      <span class="mode-ico">💬</span>
+      <span class="mode-name">Text</span>
+      <span class="mode-hint">Anonymous chat</span>
+    </div>
+    <div class="mode v" onclick="startChat('video')">
+      <span class="mode-ico">🎥</span>
+      <span class="mode-name">Video</span>
+      <span class="mode-hint">Face to face</span>
+    </div>
+  </div>
+
+  <p class="int-label fade d5">Interests (optional — improves matching)</p>
+  <div class="chips fade d5" id="chips">
+    <span class="chip" onclick="toggleChip(this)">🎮 Gaming</span>
+    <span class="chip" onclick="toggleChip(this)">🎵 Music</span>
+    <span class="chip" onclick="toggleChip(this)">🎬 Movies</span>
+    <span class="chip" onclick="toggleChip(this)">📚 Books</span>
+    <span class="chip" onclick="toggleChip(this)">💻 Tech</span>
+    <span class="chip" onclick="toggleChip(this)">🎨 Art</span>
+    <span class="chip" onclick="toggleChip(this)">✈️ Travel</span>
+    <span class="chip" onclick="toggleChip(this)">🏋️ Fitness</span>
+    <span class="chip" onclick="toggleChip(this)">🍕 Food</span>
+    <span class="chip" onclick="toggleChip(this)">🐾 Pets</span>
+    <span class="chip" onclick="toggleChip(this)">📸 Photo</span>
+    <span class="chip" onclick="toggleChip(this)">🧠 Science</span>
+  </div>
+
+  <p class="terms fade d6">
+    18+ only. By chatting you agree to our <a href="#">Terms</a> and <a href="#">Guidelines</a>.<br>
+    Report abuse anytime. Your IP is logged for safety.
+  </p>
+</div>
+
+<!-- ══════════════════════ ROOM ══════════════════════ -->
+<div id="room">
+
+  <!-- Top bar -->
+  <div class="bar">
+    <div class="bar-logo">SW</div>
+    <div class="bar-mid">
+      <div class="sdot" id="sdot"></div>
+      <span id="stext">—</span>
+    </div>
+    <div class="bar-btns">
+      <button class="btn btn-danger" onclick="skip()" id="skipBtn">⏭ Next</button>
+      <button class="btn btn-ghost" onclick="leave()" style="padding:8px 14px;font-size:12px;">Leave</button>
+    </div>
+  </div>
+
+  <!-- Disconnected banner -->
+  <div class="dbanner" id="dbanner">
+    Stranger left —
+    <button class="btn btn-p" onclick="findStranger()" style="padding:6px 14px;font-size:11px;">Find New</button>
+  </div>
+
+  <div class="main">
+
+    <!-- VIDEO PANEL -->
+    <div class="vpanel" id="vpanel">
+      <div class="vremote">
+        <div class="vplaceholder" id="vph">
+          <div class="vplaceholder-icon">👤</div>
+          <span style="font-size:12px;font-family:var(--mono);letter-spacing:1px;">WAITING...</span>
+        </div>
+        <video id="remoteVideo" autoplay playsinline></video>
+      </div>
+      <div class="vlocal">
+        <video id="localVideo" autoplay playsinline muted></video>
+      </div>
+      <div class="vbar">
+        <button class="btn-icon" id="camBtn" onclick="toggleCam()" title="Camera">📷</button>
+        <button class="btn-icon" id="micBtn" onclick="toggleMic()" title="Mic">🎤</button>
+        <button class="btn-icon" onclick="skip()" title="Next" style="font-size:14px;">⏭</button>
+      </div>
+    </div>
+
+    <!-- TEXT PANEL -->
+    <div class="tpanel">
+
+      <!-- Searching overlay -->
+      <div class="overlay" id="overlay">
+        <div class="spinner"></div>
+        <div class="ov-title">Finding someone...</div>
+        <div class="ov-sub" id="ov-sub">searching...</div>
+        <button class="btn btn-ghost ov-cancel" onclick="leave()" style="padding:8px 16px;font-size:12px;">Cancel</button>
+      </div>
+
+      <!-- Messages -->
+      <div class="msgs" id="msgs"></div>
+
+      <!-- Typing -->
+      <div class="typing-wrap">
+        <div class="typing" id="typing">
+          <div class="td"></div><div class="td"></div><div class="td"></div>
+        </div>
+      </div>
+
+      <!-- Emoji tray -->
+      <div class="etray" id="etray">
+        <button class="emo" onclick="emoji('😂')">😂</button>
+        <button class="emo" onclick="emoji('❤️')">❤️</button>
+        <button class="emo" onclick="emoji('👋')">👋</button>
+        <button class="emo" onclick="emoji('🔥')">🔥</button>
+        <button class="emo" onclick="emoji('😍')">😍</button>
+        <button class="emo" onclick="emoji('🤣')">🤣</button>
+        <button class="emo" onclick="emoji('😭')">😭</button>
+        <button class="emo" onclick="emoji('🎉')">🎉</button>
+        <button class="emo" onclick="emoji('👀')">👀</button>
+        <button class="emo" onclick="emoji('💀')">💀</button>
+        <button class="emo" onclick="emoji('🤯')">🤯</button>
+        <button class="emo" onclick="emoji('😴')">😴</button>
+        <button class="emo" onclick="emoji('🙏')">🙏</button>
+        <button class="emo" onclick="emoji('👍')">👍</button>
+        <button class="emo" onclick="emoji('💯')">💯</button>
+        <button class="emo" onclick="emoji('🌍')">🌍</button>
+      </div>
+
+      <!-- Input -->
+      <div class="inputbar">
+        <button class="btn-icon" onclick="toggleEmoji()" id="emoBtn" style="font-size:18px;">😊</button>
+        <textarea class="inp" id="inp" placeholder="Message..." rows="1"
+          onkeydown="onKey(event)" oninput="onType()"></textarea>
+        <button class="btn-send" id="sendBtn" onclick="send()" disabled>➤</button>
+      </div>
+
+    </div><!-- /tpanel -->
+  </div><!-- /main -->
+</div><!-- /room -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════
+const ICE = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    // Add TURN servers here for production reliability:
+    // { urls: 'turn:your-turn-server.com', username: 'user', credential: 'pass' }
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+let socket, pc;
+let mode = 'text';
+let roomId = null;
+let isConnected = false;
+let localStream = null;
+let camOn = true, micOn = true;
+let typingTimer = null;
+let amTyping = false;
+let interests = [];
+
+// ═══════════════════════════════════════════════════════════
+//  SOCKET INIT
+// ═══════════════════════════════════════════════════════════
+function initSocket() {
+  socket = io({ transports: ['websocket'] });
+
+  socket.on('connect', () => {
+    console.log('[socket] connected:', socket.id);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('[socket] disconnected');
+    setStatus('', '—');
+    if (isConnected) handleStrangerLeft();
+  });
+
+  // Online count from server
+  socket.on('online_count', count => {
+    const el = document.getElementById('onlineCount');
+    if (el) el.textContent = count.toLocaleString();
+    const sub = document.getElementById('ov-sub');
+    if (sub) sub.textContent = `searching through ${count.toLocaleString()} people`;
+  });
+
+  // Searching (no partner yet)
+  socket.on('searching', () => {
+    showOverlay(true);
+    setStatus('search', 'Searching...');
+  });
+
+  // Matched with a stranger
+  socket.on('matched', async ({ roomId: rid, initiator, mode: m }) => {
+    roomId = rid;
+    isConnected = true;
+    showOverlay(false);
+    setStatus('on', 'Connected');
+    document.getElementById('dbanner').classList.remove('show');
+    enableInput(true);
+    sysMsg('✓ stranger connected');
+
+    if (m === 'video') {
+      await setupWebRTC(initiator);
+    }
+  });
+
+  // Stranger disconnected
+  socket.on('stranger_left', () => handleStrangerLeft());
+
+  // Incoming chat message
+  socket.on('message', ({ text }) => {
+    addMsg(text, 'them');
+    hideTyping();
+  });
+
+  // Typing indicators
+  socket.on('typing_start', () => showTyping());
+  socket.on('typing_stop', () => hideTyping());
+
+  // WebRTC signaling
+  socket.on('webrtc_offer', async ({ offer }) => {
+    if (!pc) return;
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit('webrtc_answer', { roomId, answer });
+  });
+
+  socket.on('webrtc_answer', async ({ answer }) => {
+    if (!pc) return;
+    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+  });
+
+  socket.on('webrtc_ice', async ({ candidate }) => {
+    if (!pc || !candidate) return;
+    try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch(e){}
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  WebRTC
+// ═══════════════════════════════════════════════════════════
+async function setupWebRTC(initiator) {
+  closePeer();
+  pc = new RTCPeerConnection(ICE);
+
+  // Add local tracks
+  if (localStream) {
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  }
+
+  // Remote stream → video element
+  const remoteStream = new MediaStream();
+  document.getElementById('remoteVideo').srcObject = remoteStream;
+
+  pc.ontrack = e => {
+    remoteStream.addTrack(e.track);
+    document.getElementById('remoteVideo').style.display = 'block';
+    document.getElementById('vph').style.display = 'none';
+  };
+
+  // ICE candidates
+  pc.onicecandidate = e => {
+    if (e.candidate) {
+      socket.emit('webrtc_ice', { roomId, candidate: e.candidate });
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    console.log('[WebRTC]', pc.connectionState);
+  };
+
+  // Only initiator creates offer
+  if (initiator) {
+    const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+    await pc.setLocalDescription(offer);
+    socket.emit('webrtc_offer', { roomId, offer });
+  }
+}
+
+function closePeer() {
+  if (pc) { pc.close(); pc = null; }
+  const rv = document.getElementById('remoteVideo');
+  rv.srcObject = null;
+  rv.style.display = 'none';
+  document.getElementById('vph').style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CAMERA / MIC
+// ═══════════════════════════════════════════════════════════
+async function startCam() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'user' },
+      audio: true
+    });
+    document.getElementById('localVideo').srcObject = localStream;
+    toast('📷 Camera ready');
+    return true;
+  } catch (e) {
+    toast('⚠️ Camera denied — switching to text');
+    return false;
+  }
+}
+
+function toggleCam() {
+  if (!localStream) return;
+  camOn = !camOn;
+  localStream.getVideoTracks().forEach(t => t.enabled = camOn);
+  const btn = document.getElementById('camBtn');
+  btn.textContent = camOn ? '📷' : '🚫';
+  btn.classList.toggle('muted', !camOn);
+  toast(camOn ? '📷 Camera on' : '📷 Camera off');
+}
+
+function toggleMic() {
+  if (!localStream) return;
+  micOn = !micOn;
+  localStream.getAudioTracks().forEach(t => t.enabled = micOn);
+  const btn = document.getElementById('micBtn');
+  btn.textContent = micOn ? '🎤' : '🔇';
+  btn.classList.toggle('muted', !micOn);
+  toast(micOn ? '🎤 Mic on' : '🔇 Mic muted');
+}
+
+function stopCam() {
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CHAT FLOW
+// ═══════════════════════════════════════════════════════════
+async function startChat(m) {
+  mode = m;
+  interests = getInterests();
+
+  if (!socket) initSocket();
+
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('room').style.display = 'flex';
+
+  clearMsgs();
+  sysMsg('🔒 anonymous & private');
+
+  if (mode === 'video') {
+    document.getElementById('vpanel').classList.add('show');
+    const ok = await startCam();
+    if (!ok) {
+      mode = 'text';
+      document.getElementById('vpanel').classList.remove('show');
+    }
+  }
+
+  findStranger();
+}
+
+function findStranger() {
+  isConnected = false;
+  closePeer();
+  enableInput(false);
+  document.getElementById('dbanner').classList.remove('show');
+  showOverlay(true);
+  setStatus('search', 'Searching...');
+  socket.emit('find_stranger', { mode, interests });
+}
+
+function skip() {
+  if (!socket) return;
+  clearMsgs();
+  sysMsg('🔒 anonymous & private');
+  isConnected = false;
+  closePeer();
+  enableInput(false);
+  hideTyping();
+  document.getElementById('dbanner').classList.remove('show');
+  showOverlay(true);
+  setStatus('search', 'Searching...');
+  socket.emit('skip', { mode, interests });
+}
+
+function handleStrangerLeft() {
+  isConnected = false;
+  closePeer();
+  enableInput(false);
+  hideTyping();
+  setStatus('', 'Disconnected');
+  document.getElementById('dbanner').classList.add('show');
+  sysMsg('👋 stranger left');
+}
+
+function leave() {
+  isConnected = false;
+  closePeer();
+  stopCam();
+  if (socket) { socket.disconnect(); socket = null; }
+  document.getElementById('room').style.display = 'none';
+  document.getElementById('landing').style.display = 'flex';
+  document.getElementById('vpanel').classList.remove('show');
+  document.getElementById('dbanner').classList.remove('show');
+  showOverlay(false);
+  enableInput(false);
+  clearMsgs();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MESSAGING
+// ═══════════════════════════════════════════════════════════
+function send() {
+  const inp = document.getElementById('inp');
+  const text = inp.value.trim();
+  if (!text || !isConnected || !socket) return;
+  socket.emit('message', { roomId, text });
+  addMsg(text, 'me');
+  inp.value = '';
+  inp.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+  stopMyTyping();
+  document.getElementById('etray').classList.remove('show');
+}
+
+function addMsg(text, who) {
+  const msgs = document.getElementById('msgs');
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${who}`;
+
+  const who_label = document.createElement('div');
+  who_label.className = 'msg-who';
+  who_label.textContent = who === 'me' ? 'you' : 'stranger';
+
+  const bub = document.createElement('div');
+  bub.className = 'bubble';
+  bub.textContent = text;
+
+  wrap.appendChild(who_label);
+  wrap.appendChild(bub);
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function sysMsg(text) {
+  const msgs = document.getElementById('msgs');
+  const d = document.createElement('div');
+  d.className = 'sysmsg';
+  d.textContent = text;
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function clearMsgs() {
+  document.getElementById('msgs').innerHTML = '';
+}
+
+function onKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+}
+
+function onType() {
+  const inp = document.getElementById('inp');
+  inp.style.height = 'auto';
+  inp.style.height = Math.min(inp.scrollHeight, 110) + 'px';
+  document.getElementById('sendBtn').disabled = !inp.value.trim() || !isConnected;
+
+  if (!amTyping && isConnected && socket) {
+    amTyping = true;
+    socket.emit('typing_start', { roomId });
+  }
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(stopMyTyping, 1800);
+}
+
+function stopMyTyping() {
+  if (amTyping && socket) {
+    amTyping = false;
+    socket.emit('typing_stop', { roomId });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════════════
+function showTyping() { document.getElementById('typing').classList.add('show'); }
+function hideTyping() { document.getElementById('typing').classList.remove('show'); }
+
+function showOverlay(show) {
+  document.getElementById('overlay').classList.toggle('show', show);
+}
+
+function enableInput(on) {
+  const inp = document.getElementById('inp');
+  inp.disabled = !on;
+  if (!on) document.getElementById('sendBtn').disabled = true;
+  if (on) inp.focus();
+}
+
+function setStatus(state, text) {
+  const dot = document.getElementById('sdot');
+  dot.className = 'sdot' + (state ? ' ' + state : '');
+  document.getElementById('stext').textContent = text;
+}
+
+function toggleEmoji() {
+  document.getElementById('etray').classList.toggle('show');
+}
+function emoji(e) {
+  const inp = document.getElementById('inp');
+  inp.value += e;
+  inp.focus();
+  onType();
+  document.getElementById('etray').classList.remove('show');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#etray') && !e.target.closest('#emoBtn'))
+    document.getElementById('etray').classList.remove('show');
+});
+
+function toggleChip(el) { el.classList.toggle('on'); }
+function getInterests() {
+  return [...document.querySelectorAll('.chip.on')].map(c => c.textContent.trim());
+}
+
+let toastT;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ESC = skip
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && isConnected) skip();
+});
+
+// Connect socket early to get online count on landing
+window.addEventListener('load', () => {
+  initSocket();
+});
+</script>
+</body>
+</html>
